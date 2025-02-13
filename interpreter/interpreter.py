@@ -94,7 +94,12 @@ class Interpreter:
             op = self.advance()
             value = self.parse_primary()
             return value if op.type == 'ADD' else -value
-            
+        elif token.type == "COMMA":
+            self.advance()
+            return self.parse_primary() 
+        elif token.type == "RSET":
+            return token.type
+
         self.error(f"Unexpected token {token.type}")
 
     def parse_factor(self):
@@ -132,7 +137,7 @@ class Interpreter:
     def parse_comparison(self):
         left = self.parse_term()
 
-        # Map token types to comparison operators
+        # map token types to comparison operators
         comparisons = {
             'EQ': lambda x, y: x == y,
             'NEQ': lambda x, y: x != y,
@@ -152,8 +157,23 @@ class Interpreter:
         return left
 
     def evaluate_expression(self):
-        return self.parse_comparison()
         
+        if self.peek().type == "LSET":
+            return self.evaluate_set()
+
+        return self.parse_comparison()
+    
+    def evaluate_set(self):
+        self.expect("LSET")
+        l = []
+        while self.peek().type != "RSET":
+            l.append(self.evaluate_expression())
+            
+        self.advance()
+
+
+        return l       
+
     def execute_statement(self):
         token = self.peek()
         
@@ -221,19 +241,50 @@ class Interpreter:
             self.advance()
             var_name = self.expect('IDENTIFIER').value
             self.expect('IN')
-            start = int(self.evaluate_expression())
-            self.expect('COMMA')
-            end = int(self.evaluate_expression())
-            
-            self.expect('LGROUP')
-            block_start = self.pos
-            
-            for i in range(start, end):
-                self.variables[var_name] = i
-                self.pos = block_start
-                self.execute_block()
-                if i < end - 1:
+            if self.peek().type == "RANGE":
+                self.advance()
+                self.expect("LPAREN")
+
+                start = int(self.evaluate_expression())
+                self.expect('COMMA')
+                end = int(self.evaluate_expression())
+                self.expect('RPAREN')
+                self.expect('LGROUP')
+
+
+                block_start = self.pos
+                for i in range(start, end):
+                    self.variables[var_name] = i
                     self.pos = block_start
+                    self.execute_block()
+                    if i < end - 1:
+                        self.pos = block_start
+                
+
+            elif self.peek().type == "IDENTIFIER":
+                value = self.variables[self.advance().value]
+                if type(value) != list:
+                    self.error(f"expected list at {self.token}")
+                    return
+                
+                self.expect('LGROUP')
+                                
+                block_start = self.pos
+                for i in value:
+                    self.variables[var_name] = i
+                    self.pos = block_start
+                    self.execute_block()
+
+            elif self.peek().type == "LSET":
+                value = self.evaluate_set()
+                
+                self.expect('LGROUP')
+                                
+                block_start = self.pos
+                for i in value:
+                    self.variables[var_name] = i
+                    self.pos = block_start
+                    self.execute_block()
                 
             self.expect('RGROUP')
             

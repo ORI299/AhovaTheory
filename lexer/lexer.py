@@ -44,12 +44,24 @@ class Lexer:
         if self.code.startswith('for', self.pos):
             self.pos += 3
             return Token('FOR', 'for')
+        
+        if self.code.startswith('range', self.pos):
+            self.pos += 5
+            return Token('RANGE', 'range')
 
         if self.code.startswith('in', self.pos):
             self.pos += 3
             return Token('IN', 'in')
 
-        # Add new tokens for groups/lists
+        # add new tokens for groups/lists
+        if self.code[self.pos] == '[':
+            self.pos += 1
+            return Token('LSET', '[')
+
+        if self.code[self.pos] == ']':
+            self.pos += 1
+            return Token('RSET', ']')
+        
         if self.code[self.pos] == '{':
             self.pos += 1
             return Token('LGROUP', '{')
