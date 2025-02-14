@@ -1,0 +1,6 @@
+echo 14+5;
+let a = [1, 5, 3];
+echo a;
+for i in [1, 5, 3] {
+    echo i;
+}
